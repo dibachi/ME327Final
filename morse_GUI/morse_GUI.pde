@@ -10,15 +10,23 @@ final int WINDOW_WIDTH = 1280;
 final int WINDOW_HEIGHT = 720;
 final int CHAR_SIZE = 100;
 
+final int INPUT_HEIGHT = 330; // vertical position of user input line
+
 final int LIGHT_GRAY = 0xd8dce3;
-final int RED = 0xFFad2d2d;
+final int DARK_RED = 0xFFad2d2d;
 final int BLACK = 0xFF000000;
 final int GREEN = 0xFF11d41b;
+final int YELLOW = 0xFFfcf514;
+final int RED = 0xFFfc0f0f;
 
 // Module Variables
 Serial myPort;        // The serial port
 StringDict morseDict;
 boolean showActualMorse = true;
+String currentWord;
+int currentLetterIdx;
+int currentLetterPosn;
+int currentElemIdx;
 
 int highlightIdx = -1;
 
@@ -48,27 +56,21 @@ void setup() {
   // Slow down draw
   //frameRate(0.5); 
   
-  drawStaticScreen();
   
+  drawStaticScreen();
+  drawInstructions();
+  // Don't constantly run draw
+  //noLoop();
+  
+  String s = "SOSABCD1234";
+  beginUserMorse(s);
   
 }
 
 void draw() {
-  drawStaticScreen();
-  drawInstructions();
-  
-  String s = "SOSABCD1234";
-  if(highlightIdx >= s.length()) {
-    highlightIdx = -1;
-  }
-  
-  drawWord(s, highlightIdx);
-  delay(1000);
-  highlightIdx++;
-  
-  
   
 }
+
 
 // Draw the static elements of the screen
 void drawStaticScreen() {
@@ -79,13 +81,15 @@ void drawStaticScreen() {
   textSize(50);
   textAlign(CENTER, CENTER);
   float tw = textWidth(title);
-  fill(RED);
+  fill(DARK_RED);
   text(title, WINDOW_WIDTH/2 , 20);
   
   // Underline
   rectMode(CENTER);
   noStroke();
   rect(WINDOW_WIDTH/2, 50, tw, 5);
+  
+  redraw();
 }
 
 // Draw Instructions
@@ -96,18 +100,20 @@ void drawInstructions() {
   text("Instructions:", 20, 400);
   text("Quick-press handle to change selected word", 20, 425);
   text("Hold handle down to start exercise", 20, 450);
+  
+  redraw();
 }
 
 // Draw specified word
 // Highlight character at specified index or none if value is -1
 void drawWord(String word, int highlightedChar){
   
-  
   // Draw the word letter by letter
   int x = (width - ((word.length()-1)*CHAR_SIZE))/2;
   
   // Print header for line
   if (showActualMorse){
+    fill(BLACK);
     textSize(20);
     textAlign(RIGHT, CENTER);
     text("Actual:",x-75, 300);
@@ -115,7 +121,7 @@ void drawWord(String word, int highlightedChar){
   
   for (int i = 0; i < word.length(); i++) {
     if (i == highlightedChar) {
-      fill(GREEN);
+      fill(YELLOW);
     } else {
       fill(BLACK);
     }
@@ -146,6 +152,105 @@ void drawWord(String word, int highlightedChar){
     
     
   }
+  
+  redraw();
+}
+
+// Begin the user morse code input by drawing background and initializing vars
+void beginUserMorse(String word)
+{
+  currentWord = word;
+  currentElemIdx = 0; // start at 1st morse elem
+  currentLetterIdx = 0; // start at 1st letter
+  currentLetterPosn = (width - ((currentWord.length()-1)*CHAR_SIZE))/2;
+  
+  int currentElemPosn = currentLetterPosn - CHAR_SIZE/2 + 18* (currentElemIdx+1);
+  
+  // draw header
+  textSize(20);
+  textAlign(RIGHT, CENTER);
+  fill(BLACK);
+  text("You:",currentLetterPosn-75, INPUT_HEIGHT);
+  
+  drawWord(currentWord, currentLetterIdx);
+  
+  redraw();
+}
+
+// Handles user input of dot
+void inputDot() {
+  int currentElemPosn = currentLetterPosn - CHAR_SIZE/2 + 18* (currentElemIdx+1);
+  int c;
+  
+  
+  // Evaluate input correctness
+  String morse = morseDict.get(String.valueOf(currentWord.charAt(currentLetterIdx)));
+  if (currentElemIdx < morse.length()){ // compare to corresponding dot/dash
+    // set color based on correctness of elem
+    if (morse.charAt(currentElemIdx) == '.') {
+          c = GREEN;
+        } else {
+          c = RED;
+        }
+  } else if (currentElemIdx < 5) { // fits on screen, but always wrong
+    c = RED;
+  } else { // clipped draw X
+    currentElemPosn = currentLetterPosn - CHAR_SIZE/2 + 18* (5+1);
+    c = RED;
+    drawX(currentElemPosn, INPUT_HEIGHT, c);
+    return;
+  }
+  
+  drawDot(currentElemPosn, INPUT_HEIGHT, c);
+  currentElemIdx ++; 
+}
+
+// Handles user input of dash
+void inputDash() {
+  int currentElemPosn = currentLetterPosn - CHAR_SIZE/2 + 18* (currentElemIdx+1);
+  int c;
+  
+    // Evaluate input correctness
+  String morse = morseDict.get(String.valueOf(currentWord.charAt(currentLetterIdx)));
+  if (currentElemIdx < morse.length()){ // compare to corresponding dot/dash
+    // set color based on correctness of elem
+    if (morse.charAt(currentElemIdx) == '-') {
+          c = GREEN;
+        } else {
+          c = RED;
+        }
+  } else if (currentElemIdx < 5) { // fits on screen, but always wrong
+    c = RED;
+  } else { // clipped draw X
+    currentElemPosn = currentLetterPosn - CHAR_SIZE/2 + 18* (5+1);
+    c = RED;
+    drawX(currentElemPosn, INPUT_HEIGHT, c);
+    return;
+  }
+  
+  drawDash(currentElemPosn, INPUT_HEIGHT, c);
+  currentElemIdx++; 
+}
+
+// Handles user input of End of Character
+void inputEOC() {
+  currentLetterIdx++;
+  currentLetterPosn = (width - ((currentWord.length()-1)*CHAR_SIZE))/2 + (currentLetterIdx * CHAR_SIZE);
+  currentElemIdx = 0;
+  
+  if (currentLetterIdx >= currentWord.length())
+  {
+    println("Finished Word. Ending");
+    exit();
+  } else {
+   drawWord(currentWord, currentLetterIdx); 
+  }
+}
+
+// Handles user input of End of Word
+void inputEOW() {
+  println("Morse input ended");
+  exit();
 }
 
 // Draw morse dot centered at x,y with color c
@@ -155,6 +260,7 @@ void drawDot(int x, int y, int c){
   fill(c);
   ellipse(x, y, 12, 12);
   
+  redraw();
 }
 
 // Draw morse dash centered at x,y with color c
@@ -163,7 +269,20 @@ void drawDash(int x, int y, int c){
   rectMode(CENTER);
   fill(c);
   rect(x, y, 12, 5);
+  
+  redraw();
 }
+
+// Draw morse X centered at x,y with color c
+void drawX(int x, int y, int c){
+  noStroke();
+  textAlign(RIGHT, CENTER);
+  fill(c);
+  textSize(12);
+  text("X", x-2, y-2);
+  redraw();
+}
+
 
 // init morse dict and insert all keys
 void initMorseDict(){
@@ -212,4 +331,18 @@ void initMorseDict(){
   morseDict.set("9", "----.");
   morseDict.set("0", "-----");
 
+}
+
+// Simulate serial with keyboard presses
+void keyPressed() {
+  if (key == 'a') { // dot
+    inputDot();
+  } else if (key == 's'){ // dash
+    inputDash();
+  } else if (key == 'd'){ // eoc
+    inputEOC();
+  } else if (key == 'f'){ // eow
+    inputEOW();
+  }
+  
 }
