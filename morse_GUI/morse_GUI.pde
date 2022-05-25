@@ -44,6 +44,7 @@ int currentElemIdx;
 int highlightIdx = -1;
 
 State currentState;
+String serialStr = "";
 
 void settings() {
   // set the window size:
@@ -59,7 +60,7 @@ void setup() {
   // Check the listed serial ports in your machine
   // and use the correct index number in Serial.list()[].
   //note you may need to change port number
-  myPort = new Serial(this, Serial.list()[0], 38400);  // also make sure baud rate matches Arduino
+  myPort = new Serial(this, Serial.list()[1], 38400);  // also make sure baud rate matches Arduino
   
   // A serialEvent() is generated when a newline character is received :
   myPort.bufferUntil('\n');
@@ -67,7 +68,7 @@ void setup() {
   // Morse Dictionary setup
   initMorseDict();
   
-   currentState  = State.IDLE;
+  currentState  = State.IDLE;
   
   
   // Slow down draw
@@ -77,15 +78,120 @@ void setup() {
   drawStaticScreen();
   drawInstructions();
   // Don't constantly run draw
-  //noLoop();
+  noLoop();
   
   //String s = "SOSABCD1234";
   //beginUserMorse(s);
   
 }
 
+// state machine
 void draw() {
+  switch(currentState) { //<>//
+    case IDLE: {
+      // Go to initial state
+      if (serialStr.equals("reset")){
+        currentState = State.WORD_SELECT;
+        drawStaticScreen();
+        drawInstructions();
+      }
+      
+    } break;
+    
+    case WORD_SELECT: {
+      // ignore reset in this state
+      if (serialStr.equals("reset")){
+        // do nothing
+      }
+      // if all upper case, it is an input word
+      else if (serialStr.toUpperCase().equals(serialStr)) {
+        drawStaticScreen();
+        drawInstructions();
+        currentWord = serialStr;
+        drawWord(serialStr, -1); // no highlighting
+      // Start round 1
+      } else if (serialStr.equals("start")){
+        currentState = State.ROUND1;
+        beginUserMorse(currentWord, 1); // begin round 1
+      }
+      // ignore reset in this state      
+      
+    } break;
+    
+    case ROUND1: {
+      
+      if (serialStr.equals("reset")){
+        currentState = State.WORD_SELECT;
+        drawStaticScreen();
+        drawInstructions();
+      
+      } else if (serialStr.equals("dot")){
+        inputDot();
+      } else if (serialStr.equals("dash")){
+        inputDash();
+      } else if (serialStr.equals("eoc")){
+        inputEOC();
+      } else if (serialStr.equals("eow")){
+        currentState = State.ROUND2;
+        beginUserMorse(currentWord, 2); // begin round 2
+      } 
+      
+    } break;
+    
+    case ROUND2: {
+      
+      if (serialStr.equals("reset")){
+        currentState = State.WORD_SELECT;
+        drawStaticScreen();
+        drawInstructions();
+      } else if (serialStr.equals("dot")){
+        inputDot();
+      } else if (serialStr.equals("dash")){
+        inputDash();
+      } else if (serialStr.equals("eoc")){
+        inputEOC();
+      } else if (serialStr.equals("eow")){
+        currentState = State.ROUND3;
+        beginUserMorse(currentWord, 3); // begin round 3
+      } 
+      
+    } break;
+    
+    case ROUND3: {
+      
+      if (serialStr.equals("reset")){
+        currentState = State.WORD_SELECT;
+        drawStaticScreen();
+        drawInstructions();
+      } else if (serialStr.equals("dot")){
+        inputDot();
+      } else if (serialStr.equals("dash")){
+        inputDash();
+      } else if (serialStr.equals("eoc")){
+        inputEOC();
+      } else if (serialStr.equals("eow")){
+        currentState = State.END;
+        // Go to end state
+      } 
+      
+    } break;
+    
+    case END: {
+      
+      if (serialStr.equals("reset")){
+        currentState = State.WORD_SELECT;
+        drawStaticScreen();
+        drawInstructions();
+      }
+      
+    } break;
+    
+    default:
+      println("Unknown State");
+  }
   
+  // clear string
+  serialStr = "";
 }
 
 
@@ -106,7 +212,7 @@ void drawStaticScreen() {
   noStroke();
   rect(WINDOW_WIDTH/2, 50, tw, 5);
   
-  redraw();
+  ////redraw();
 }
 
 // Draw Instructions
@@ -121,8 +227,9 @@ void drawInstructions() {
   text("During Training:", 30, 500);
   text("There will be 3 rounds, blah blah blah", 40, 525);
   text("etc etc etc", 40, 550);
+  text("Insert More Instructions Here", 40, 575);
   
-  redraw();
+  ////redraw();
 }
 
 // Draw specified word
@@ -174,12 +281,14 @@ void drawWord(String word, int highlightedChar){
     
   }
   
-  redraw();
+  ////redraw();
 }
 
 // Begin the user morse code input by drawing background and initializing vars
 void beginUserMorse(String word, int round)
 {
+  drawStaticScreen();
+  
   currentWord = word;
   currentElemIdx = 0; // start at 1st morse elem
   currentLetterIdx = 0; // start at 1st letter
@@ -193,9 +302,16 @@ void beginUserMorse(String word, int round)
   fill(BLACK);
   text("You:",currentLetterPosn-75, INPUT_HEIGHT);
   
+  // Draw round number
+  String roundStr = "Round: " +  str(round);
+  textSize(40);
+  textAlign(CENTER, CENTER);
+  fill(DARK_RED);
+  text(roundStr, WINDOW_WIDTH/2 , 70);
+  
   drawWord(currentWord, currentLetterIdx);
   
-  redraw();
+  ////redraw();
 }
 
 // Handles user input of dot
@@ -261,8 +377,7 @@ void inputEOC() {
   
   if (currentLetterIdx >= currentWord.length())
   {
-    println("Finished Word. Ending");
-    exit();
+    println("Finished Word");
   } else {
    drawWord(currentWord, currentLetterIdx); 
   }
@@ -270,8 +385,8 @@ void inputEOC() {
 
 // Handles user input of End of Word
 void inputEOW() {
-  println("Morse input ended");
-  exit();
+  println("Morse input round ended");
+  //exit();
 }
 
 // Draw morse dot centered at x,y with color c
@@ -281,7 +396,7 @@ void drawDot(int x, int y, int c){
   fill(c);
   ellipse(x, y, 12, 12);
   
-  redraw();
+  ////redraw();
 }
 
 // Draw morse dash centered at x,y with color c
@@ -291,7 +406,7 @@ void drawDash(int x, int y, int c){
   fill(c);
   rect(x, y, 12, 5);
   
-  redraw();
+  ////redraw();
 }
 
 // Draw morse X centered at x,y with color c
@@ -301,7 +416,7 @@ void drawX(int x, int y, int c){
   fill(c);
   textSize(12);
   text("X", x-2, y-2);
-  redraw();
+  //redraw();
 }
 
 
@@ -364,121 +479,26 @@ void keyPressed() {
     inputEOC();
   } else if (key == 'f'){ // eow
     inputEOW();
+  } else {
+   return; // return before redraw 
   }
-  
+  redraw();
 }
 
 void serialEvent (Serial myPort) {
-  String serialStr = myPort.readStringUntil(lf);
-  println(serialStr);
-  
-  switch(currentState) {
-    case IDLE: {
-      // Go to initial state
-      if (serialStr.equals("reset")){
-        currentState = State.WORD_SELECT;
-        drawStaticScreen();
-        drawInstructions();
-      }
-      
-    } break;
-    
-    case WORD_SELECT: {
-      // if all upper case, it is an input word
-      if (serialStr.toUpperCase().equals(serialStr)) {
-        drawStaticScreen();
-        drawInstructions();
-        currentWord = serialStr;
-        drawWord(serialStr, -1); // no highlighting
-      // Start round 1
-      } else if (serialStr.equals("start")){
-        currentState = State.ROUND1;
-        beginUserMorse(currentWord, 1); // begin round 1
-      // RESET
-      } else if (serialStr.equals("reset")){
-        currentState = State.WORD_SELECT;
-        drawStaticScreen();
-        drawInstructions();
-      }
-      
-      
-    } break;
-    
-    case ROUND1: {
-      
-      if (serialStr.equals("reset")){
-        currentState = State.WORD_SELECT;
-        drawStaticScreen();
-        drawInstructions();
-      
-      } else if (serialStr.equals("dot")){
-        inputDot();
-      } else if (serialStr.equals("dash")){
-        inputDash();
-      } else if (serialStr.equals("eoc")){
-        inputEOC();
-      } else if (serialStr.equals("eow")){
-        currentState = State.ROUND2;
-        beginUserMorse(currentWord, 2); // begin round 2
-      } else {
-        println("Invalid string: " + serialStr);
-      }
-      
-    } break;
-    
-    case ROUND2: {
-      
-      if (serialStr.equals("reset")){
-        currentState = State.WORD_SELECT;
-        drawStaticScreen();
-        drawInstructions();
-      } else if (serialStr.equals("dot")){
-        inputDot();
-      } else if (serialStr.equals("dash")){
-        inputDash();
-      } else if (serialStr.equals("eoc")){
-        inputEOC();
-      } else if (serialStr.equals("eow")){
-        currentState = State.ROUND3;
-        beginUserMorse(currentWord, 3); // begin round 3
-      } else {
-        println("Invalid string: " + serialStr);
-      }
-      
-    } break;
-    
-    case ROUND3: {
-      
-      if (serialStr.equals("reset")){
-        currentState = State.WORD_SELECT;
-        drawStaticScreen();
-        drawInstructions();
-      } else if (serialStr.equals("dot")){
-        inputDot();
-      } else if (serialStr.equals("dash")){
-        inputDash();
-      } else if (serialStr.equals("eoc")){
-        inputEOC();
-      } else if (serialStr.equals("eow")){
-        currentState = State.END;
-        // Go to end state
-      } else {
-        println("Invalid string: " + serialStr);
-      }
-      
-    } break;
-    
-    case END: {
-      
-      if (serialStr.equals("reset")){
-        currentState = State.WORD_SELECT;
-        drawStaticScreen();
-        drawInstructions();
-      }
-      
-    } break;
-    
-    default:
-      println("Unknown State");
+  // Read in String from serial
+  String tempSerialStr = myPort.readStringUntil('\n'); 
+  // return if Null
+  if (serialStr == null){
+    return;
   }
+  // trim whitespace off end
+  tempSerialStr = trim(tempSerialStr);
+  // make sure it's not empty string
+  if (tempSerialStr.length() >=1)
+  {
+    serialStr = tempSerialStr;
+    redraw();
+  }
+  
 }

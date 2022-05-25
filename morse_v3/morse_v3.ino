@@ -302,7 +302,9 @@ void loop()
   
   if (state == 0) { //if in word selection phase
     if (word_selection == 1) {
+      Serial.println("reset");
       Serial.println("HAPTICS");
+      delay(250);
       if (prev_word_selection != word_selection) {
         for (int j = 0; j<sizeof(HAPTICS)/sizeof(int); j++) {
           morse_sequence[j] = HAPTICS[j];
@@ -311,7 +313,9 @@ void loop()
       }
       // morse_sequence = HAPTICS;
     } else if (word_selection == 2) {
+      Serial.println("reset");
       Serial.println("STANFORD");
+      delay(250);
       if (prev_word_selection != word_selection) {
         for (int j = 0; j<sizeof(STANFORD)/sizeof(int); j++) {
           morse_sequence[j] = STANFORD[j];
@@ -320,7 +324,9 @@ void loop()
       }
       // morse_sequence = STANFORD;
     } else {
+      Serial.println("reset");
       Serial.println("SOS");
+      delay(250);
       if (prev_word_selection != word_selection) {
         for (int j = 0; j<sizeof(SOS)/sizeof(int); j++) {
           morse_sequence[j] = SOS[j];
