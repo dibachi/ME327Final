@@ -1,6 +1,7 @@
 //--------------------------------------------------------------------------
 // Morse Code
 // Get it? Morse code? Because it's code for doing Morse code!
+// with Andrew's edits
 //--------------------------------------------------------------------------
 
 /*PSEUDOCODE
@@ -120,25 +121,32 @@ unsigned long previousTimePull = 0;
 unsigned long previousTimeContact = 0;
 unsigned long previousTimeRelease = 0;
 unsigned long intervalPull = 1000;
-unsigned long intervalContact = 1000;
-unsigned long intervalRelease = 1000;
+unsigned long intervalContact = 0;
+unsigned long intervalRelease = 0;
 unsigned long intervalContact_l = (unsigned long) 100*intervalContact;
 unsigned long intervalRelease_l = (unsigned long) 100*intervalRelease;
 double pulldown_force = 0;
-double pulldown_force_stiffness = 100;
+double pulldown_force_stiffness = 200;
 double contact_position = 0.01;
 double rest_position = 0.0; //-0.01
 double contact_force = 0;
-double contact_stiffness = 300;
+double contact_stiffness = 500;
 double restoring_force = 0;
-double restoring_stiffness = 25;
-unsigned long timing_tolerance = 100;
+double restoring_stiffness = 50;
+unsigned long timing_tolerance = 200;
 
 boolean already_printed_start = false;
 boolean already_printed_dot = false;
 boolean already_printed_dash = false;
 boolean already_printed_eoc = false;
 boolean already_printed_eow = false;
+
+boolean contact_state = false;
+boolean prev_contact_state = false;
+unsigned long currentTime = 0;
+unsigned long prevTime = 0;
+unsigned long timeInterval = 0;
+
 // enum machine_state { waiting, stage1, stage2, stage3, freewheel};
 // machine_state state;
 // machine_state prev_state;
@@ -176,6 +184,14 @@ void setup()
   // Initialize position valiables
   lastLastRawPos = analogRead(sensorPosPin);
   lastRawPos = analogRead(sensorPosPin);
+
+  state = 0;
+  prev_state = 0;
+  intervalContact = 0;
+  intervalRelease = 0;
+  intervalContact_l = (unsigned long) 100*intervalContact;
+  intervalRelease_l = (unsigned long) 100*intervalRelease;
+  //Serial.println("setup");
 
   // state = waiting;
   // prev_state = waiting;
@@ -283,29 +299,53 @@ void loop()
   if (xh > contact_position) {
     analogWrite(buzzerPin, 200); //buzzer
     analogWrite(ledPin, 200); //led
-    //virtual wall on
     contact_force = contact_stiffness*(xh - contact_position);
     restoring_force = 0;
-    currentTimeContact = millis(); //register current time 
-    previousTimeRelease = currentTimeRelease;
-    //update contact interval
-    intervalContact_l = currentTimeContact - previousTimeContact;
+
+    contact_state = true;
+    
   } else {
     analogWrite(buzzerPin, 0); //buzzer
     analogWrite(ledPin, 0); //led
     contact_force = 0; //virtual wall off
     restoring_force = restoring_stiffness*(xh - rest_position);
-    previousTimeContact = currentTimeContact;
-    currentTimeRelease = millis();
-    intervalRelease_l = currentTimeRelease - previousTimeRelease;
-  } //end if (xh > contact_position)
-  
+    
+    contact_state = false;
+  }
+
+  if (contact_state != prev_contact_state) {
+    // A change has occurred
+    currentTime = millis();
+    timeInterval = currentTime - prevTime;
+    prevTime = currentTime;
+
+    if (contact_state == false) {
+      intervalContact_l = timeInterval;
+      intervalRelease_l = 0;
+    }
+    if (contact_state == true) {
+      intervalRelease_l = timeInterval;
+    }
+    
+    prev_contact_state = contact_state;
+  }
+
   if (state == 0) { //if in word selection phase
+//    Serial.println(word_selection);
+    if (intervalContact_l < (unsigned long) 100*(dot + timing_tolerance) && intervalContact_l != 0) {
+      if (word_selection >= 2) {
+        word_selection = 0;
+      } else{
+        word_selection++;
+      } //end word selection increment
+    } //end brief tap in word selection
     if (word_selection == 1) {
-      Serial.println("reset");
-      Serial.println("HAPTICS");
-      delay(250);
+//      Serial.println("reset");
+//      Serial.println("HAPTICS");
+//      delay(250);
       if (prev_word_selection != word_selection) {
+        Serial.println("reset");
+        Serial.println("HAPTICS");
         for (int j = 0; j<sizeof(HAPTICS)/sizeof(int); j++) {
           morse_sequence[j] = HAPTICS[j];
         }
@@ -313,10 +353,12 @@ void loop()
       }
       // morse_sequence = HAPTICS;
     } else if (word_selection == 2) {
-      Serial.println("reset");
-      Serial.println("STANFORD");
-      delay(250);
+//      Serial.println("reset");
+//      Serial.println("STANFORD");
+//      delay(250);
       if (prev_word_selection != word_selection) {
+        Serial.println("reset");
+        Serial.println("STANFORD");
         for (int j = 0; j<sizeof(STANFORD)/sizeof(int); j++) {
           morse_sequence[j] = STANFORD[j];
         }
@@ -324,10 +366,12 @@ void loop()
       }
       // morse_sequence = STANFORD;
     } else {
-      Serial.println("reset");
-      Serial.println("SOS");
-      delay(250);
+//      Serial.println("reset");
+//      Serial.println("SOS");
+//      delay(250);
       if (prev_word_selection != word_selection) {
+        Serial.println("reset");
+        Serial.println("SOS");
         for (int j = 0; j<sizeof(SOS)/sizeof(int); j++) {
           morse_sequence[j] = SOS[j];
         }
@@ -335,13 +379,14 @@ void loop()
       }
       // morse_sequence = SOS; //need a pointer
     } //end word and sequence selection
-    if (intervalContact_l < (unsigned long) 100*(dot + timing_tolerance)) {
-      if (word_selection == 2) {
-        word_selection = 0;
-      } else{
-        word_selection++;
-      } //end word selection increment
-    } //end brief tap in word selection
+    //moved word selection before print
+//    if (intervalContact_l < (unsigned long) 100*(dot + timing_tolerance)&& intervalContact_l != 0) {
+//      if (word_selection >= 2) {
+//        word_selection = 0;
+//      } else{
+//        word_selection++;
+//      } //end word selection increment
+//    } //end brief tap in word selection
     if (intervalContact_l > (unsigned long) 100*3000) {
       Serial.println("start");
       state = 1; //begin stage 1
@@ -384,26 +429,30 @@ void loop()
     } //end interval length and pulldown force setting
     
     //dot/dash/eoc send
-    if (intervalContact_l < 100*(dot + timing_tolerance) && intervalContact_l > 100*(dot - timing_tolerance)) {
+    if (intervalContact_l < 100*(dot + timing_tolerance) && intervalContact_l > 100*(dot - timing_tolerance) && intervalContact_l != 0) {
       if (!already_printed_dot){
         Serial.println("dot");
         already_printed_dot = true;
 //        Serial.println(intervalContact_l);
       }
     } //end dot send
-    if (intervalContact_l > 100*(dash - 2*timing_tolerance) && intervalContact_l < 100*(dash + 2*timing_tolerance)) {
+    else if (intervalContact_l > 100*(dash - 2*timing_tolerance) && intervalContact_l < 100*(dash + 2*timing_tolerance)&& intervalContact_l != 0) {
       if (!already_printed_dash) {
         Serial.println("dash");
         already_printed_dash = true;
 //        Serial.println(intervalContact_l);
       }
     } //end dash send
-    if (intervalRelease_l < 100*(space_long + 2*timing_tolerance) && intervalRelease_l > 100*(space_long - 2*timing_tolerance)) {
-      if (!already_printed_eoc) {
-        Serial.println("eoc");
-        already_printed_eoc = true;
-      }
-    } //end eoc send
+    else {
+      
+    }
+//    if (intervalRelease_l < 100*(space_long + 2*timing_tolerance) && intervalRelease_l > 100*(space_long - 2*timing_tolerance) && intervalRelease_l != 0) {
+//      if (!already_printed_eoc) {
+//        Serial.println("eoc");
+//        already_printed_eoc = true;
+//      }
+//    } //end eoc send
+    
 
     //pull timing
     unsigned long intervalPull_l = (unsigned long) intervalPull;
@@ -413,7 +462,7 @@ void loop()
       previousTimePull = currentTimePull;
       already_printed_dot = false;
       already_printed_dash = false;
-      already_printed_eoc = false;
+//      already_printed_eoc = false;
       // Serial.println(intervalPull_l);
       if (current_character == end_space){ //end of morse sequence
         i = 0; //back to beginning of sequence
@@ -422,6 +471,9 @@ void loop()
         state++; //move on to next stage
       }
       else {
+        if (current_character == space_long) {
+          Serial.println("eoc");
+        }
         i++; //move on to next dot/dash/space
       } //end if current_character == end_space
     } //end if interval elapsed
@@ -432,145 +484,10 @@ void loop()
     Serial.println("reset");
     state = 0; //back to waiting state
   }
+  intervalContact_l = 0;
+  intervalRelease_l = 0;
   force = restoring_force + contact_force + pulldown_force;
   //NEW CODE ENDS
-
-
-
-//   if (state != 0) {
-//     int current_character = morse_sequence[i];
-//     // switch(state)
-//     // {
-//     //   case stage1:
-//     //     pulldown_force_stiffness = 100;
-//     //   break;
-
-//     //   case stage2:
-//     //     pulldown_force_stiffness = 50;
-//     //   break;
-
-//     //   case stage3:
-//     //     pulldown_force_stiffness = 25;
-//     //   break;
-//     // }
-//     if (state == 1) {
-//       pulldown_force_stiffness = 100;
-//     } else if (state == 2) {
-//       pulldown_force_stiffness = 50;
-//     } else {
-//       pulldown_force_stiffness = 25;
-//     }
-//     if (current_character == dot){
-//       intervalPull = dot;
-//       pulldown_force = pulldown_force_stiffness*(xh - contact_position);
-//     }
-//     else if (current_character == dash){
-//       intervalPull = dash;
-//       pulldown_force = pulldown_force_stiffness*(xh - contact_position);
-//     }
-//     else if (current_character == space){
-//       intervalPull = space;
-//       pulldown_force = pulldown_force_stiffness*(xh - rest_position);
-//     }
-//     else if (current_character == space_long){
-//       intervalPull = space_long;
-//       pulldown_force = pulldown_force_stiffness*(xh - rest_position);
-//     }
-//     else {
-//       intervalPull = end_space;
-//       pulldown_force = pulldown_force_stiffness*(xh - rest_position);
-//     }
-
-//     // force = 0 + pulldown_force; 
-//     //handles dot-dash timing and steps through sequence
-//     unsigned long intervalPull_l = (unsigned long) intervalPull;
-//     unsigned long currentTimePull = millis();
-//     if (currentTimePull - previousTimePull >= 100*intervalPull_l){
-//       previousTimePull = currentTimePull;
-//       if (current_character == end_space){
-//         i = 0;
-//         prev_state = state;
-//         if (state == 3) {
-//           state = 0;
-//         } else {
-//           // state = waiting; //go back to waiting when done
-//           state++;
-//         }
-//       }
-//       else {
-//         i++;
-//       }
-//     }
-//   } else { //handles tapper restoring force
-//     pulldown_force = 0;
-//     if (xh > rest_position){
-//       restoring_force = -restoring_stiffness*(xh - rest_position);
-//     } else{
-//       restoring_force = 0;
-//     }
-//   }
-//   //handles tapper contact force in all states
-//   if (xh > contact_position) {
-//     contact_force = contact_stiffness*(xh - contact_position); //virtual wall
-//     //buzzer on
-//     analogWrite(buzzerPin, 200);
-//     analogWrite(ledPin, 200);
-//     //led on
-//     currentTimeContact = millis();
-//     unsigned long intervalContact_l = currentTimeContact - previousTimeContact;
-//     Serial.println(intervalContact_l);
-//     // if (intervalContact_l > (unsigned long) 100*5000) {
-//     //   if (prev_state == waiting) {
-//     //     state = stage1;
-//     //   } else if (prev_state == stage1) {
-//     //     prev_state = waiting;
-//     //     state = stage2;
-//     //   } else if (prev_state == stage2)
-//     //   {
-//     //     prev_state = waiting;
-//     //     state = stage3;
-//     //   }
-      
-//     // }
-//     // if (intervalContact_l >= (unsigned long) 100*dot - 100*timing_tolerance && intervalContact_l <= (unsigned long) 100*dot + 100*timing_tolerance){
-//     //   Serial.println("dot");
-//     // }
-//     // if (intervalContact_l >= (unsigned long) 100*dash - 100*timing_tolerance && intervalContact_l <= (unsigned long) 100*dash + 100*timing_tolerance){
-//     //   Serial.println("dash");
-//     // }
-    
-
-//   } else {
-//     contact_force = 0;
-//     previousTimeContact = currentTimeContact;
-//     analogWrite(buzzerPin, 0);
-//     analogWrite(ledPin, 0);
-//   }
-//   force = contact_force + pulldown_force + restoring_force;
-
-// //  if (xh >= contact_position) {
-// //    double k = 300.0; //wall stiffness if penetrating wall 
-// //    force = k*(xh-contact_position) + pulldown_force;
-// //  }
-// //  else if (xh >= rest_position || xh < contact_position) {
-// //    double k = 100;
-// //    force = k*(xh - rest_position) + pulldown_force;
-// //  }
-// //  else {
-// //    force = 0 + pulldown_force; //free space feels free
-// //  }
-//   // force = 0 + pulldown_force; //free space feels free
-//   // unsigned long intervalPull_l = (unsigned long) intervalPull;
-//   // unsigned long currentTimePull = millis();
-//   // if (currentTimePull - previousTimePull >= 100*intervalPull_l){
-//   //   previousTimePull = currentTimePull;
-//   //   if (current_character == end_space){
-//   //     i = 0;
-//   //   }
-//   //   else {
-//   //     i++;
-//   //   }
-//   // }
 
   
 

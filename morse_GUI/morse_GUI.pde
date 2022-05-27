@@ -35,7 +35,7 @@ enum State {
 // Module Variables
 Serial myPort;        // The serial port
 StringDict morseDict;
-boolean showActualMorse = false;
+boolean showActualMorse = true;
 String currentWord;
 int currentLetterIdx;
 int currentLetterPosn;
@@ -60,7 +60,7 @@ void setup() {
   // Check the listed serial ports in your machine
   // and use the correct index number in Serial.list()[].
   //note you may need to change port number
-  myPort = new Serial(this, Serial.list()[1], 38400);  // also make sure baud rate matches Arduino
+  myPort = new Serial(this, Serial.list()[0], 38400);  //port 0 (COM 3) on jack's computer // also make sure baud rate matches Arduino
   
   // A serialEvent() is generated when a newline character is received :
   myPort.bufferUntil('\n');
@@ -68,7 +68,7 @@ void setup() {
   // Morse Dictionary setup
   initMorseDict();
   
-  currentState  = State.IDLE;
+  currentState  = State.IDLE; //change to word select?
   
   
   // Slow down draw
@@ -378,6 +378,7 @@ void inputEOC() {
   if (currentLetterIdx >= currentWord.length())
   {
     println("Finished Word");
+    currentLetterIdx = 0;
   } else {
    drawWord(currentWord, currentLetterIdx); 
   }
@@ -473,12 +474,16 @@ void initMorseDict(){
 void keyPressed() {
   if (key == 'a') { // dot
     inputDot();
+    //serialStr = "dot";
   } else if (key == 's'){ // dash
     inputDash();
+    //serialStr = "dash";
   } else if (key == 'd'){ // eoc
     inputEOC();
+    //serialStr = "eoc";
   } else if (key == 'f'){ // eow
     inputEOW();
+    //serialStr = "eow";
   } else {
    return; // return before redraw 
   }
