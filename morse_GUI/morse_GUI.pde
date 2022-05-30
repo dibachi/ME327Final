@@ -60,7 +60,7 @@ void setup() {
   // Check the listed serial ports in your machine
   // and use the correct index number in Serial.list()[].
   //note you may need to change port number
-  myPort = new Serial(this, Serial.list()[0], 38400);  //port 0 (COM 3) on jack's computer // also make sure baud rate matches Arduino
+  myPort = new Serial(this, Serial.list()[0], 115200);  //port 0 (COM 3) on jack's computer // also make sure baud rate matches Arduino
   
   // A serialEvent() is generated when a newline character is received :
   myPort.bufferUntil('\n');

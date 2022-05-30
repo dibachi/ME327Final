@@ -98,7 +98,7 @@ double duty = 0;            // duty cylce (between 0 and 255)
 unsigned int output = 0;    // output command to the motor
 
 //custom params
-int unit_time = 200;
+int unit_time = 150;
 int dot = unit_time + 1;
 int dash = 3*unit_time + 1;
 int space = unit_time;
@@ -110,7 +110,7 @@ int SOS[] = {dot, space, dot, space, dot, space_long, dash, space, dash, space, 
 int HAPTICS[] = {dot, space, dot, space, dot, space, dot, space_long, dot, space, dash, space_long, dot, space, dash, space, dash, space, dot, space_long, dash, space_long, dot, space, dot, space_long, dash, space, dot, space, dash, space, dot, space_long, dot, space, dot, space, dot, end_space};
 int STANFORD[] = {dot, space, dot, space, dot, space_long, dash, space_long, dot, space, dash, space_long, dash, space, dot, space_long, dot, space, dot, space, dash, space, dot, space_long, dash, space, dash, space, dash, space_long, dot, space, dash, space, dot, space_long, dot, space, dash, space, dot, space_long, dash, space, dot, space, dot, end_space};
 int word_selection = 0;
-int prev_word_selection = 0;
+int prev_word_selection = 2;
 //int total_seq_time = 0;
 //long lastTimer;
 //char *morse_sequence[] = {"dot", "space", "dot", "space", "dot", "space_long", "dash", "space", "dash", "space", "dash", "space_long", "dot", "space", "dot", "space", "dot", "end_time"};
@@ -127,13 +127,13 @@ unsigned long intervalContact_l = (unsigned long) 100*intervalContact;
 unsigned long intervalRelease_l = (unsigned long) 100*intervalRelease;
 double pulldown_force = 0;
 double pulldown_force_stiffness = 200;
-double contact_position = 0.01;
-double rest_position = 0.0; //-0.01
+double contact_position = 0.0;
+double rest_position = -0.01; //-0.01
 double contact_force = 0;
-double contact_stiffness = 500;
+double contact_stiffness = 1000;
 double restoring_force = 0;
-double restoring_stiffness = 50;
-unsigned long timing_tolerance = 200;
+double restoring_stiffness = 100;
+unsigned long timing_tolerance = 100;
 
 boolean already_printed_start = false;
 boolean already_printed_dot = false;
@@ -158,7 +158,7 @@ int prev_state = 0; //word selection
 void setup() 
 {
   // Set up serial communication
-  Serial.begin(38400);
+  Serial.begin(115200); //JUST CHANGED
   
   // Set PWM frequency 
   setPwmFrequency(pwmPin,1); 
@@ -297,8 +297,8 @@ void loop()
   
   //NEW CODE BEGINS (KEEP IT CLEAN DICKHEAD)
   if (xh > contact_position) {
-    analogWrite(buzzerPin, 200); //buzzer
-    analogWrite(ledPin, 200); //led
+    analogWrite(buzzerPin, 50); //buzzer
+    analogWrite(ledPin, 255); //led
     contact_force = contact_stiffness*(xh - contact_position);
     restoring_force = 0;
 
@@ -345,6 +345,7 @@ void loop()
 //      delay(250);
       if (prev_word_selection != word_selection) {
         Serial.println("reset");
+        delay(50);
         Serial.println("HAPTICS");
         for (int j = 0; j<sizeof(HAPTICS)/sizeof(int); j++) {
           morse_sequence[j] = HAPTICS[j];
@@ -358,6 +359,7 @@ void loop()
 //      delay(250);
       if (prev_word_selection != word_selection) {
         Serial.println("reset");
+        delay(50);
         Serial.println("STANFORD");
         for (int j = 0; j<sizeof(STANFORD)/sizeof(int); j++) {
           morse_sequence[j] = STANFORD[j];
@@ -371,6 +373,7 @@ void loop()
 //      delay(250);
       if (prev_word_selection != word_selection) {
         Serial.println("reset");
+        delay(50);
         Serial.println("SOS");
         for (int j = 0; j<sizeof(SOS)/sizeof(int); j++) {
           morse_sequence[j] = SOS[j];
@@ -387,8 +390,9 @@ void loop()
 //        word_selection++;
 //      } //end word selection increment
 //    } //end brief tap in word selection
-    if (intervalContact_l > (unsigned long) 100*3000) {
+    if (intervalContact_l > (unsigned long) 100*500) {
       Serial.println("start");
+      delay(200);
       state = 1; //begin stage 1
     } //end long word selection
   } //end word selection
@@ -398,10 +402,10 @@ void loop()
       pulldown_force_stiffness = 200;
     }
     if (state == 2) { //set pulldown stiffness
-      pulldown_force_stiffness = 100;
+      pulldown_force_stiffness = 150;
     }
     if (state == 3) { //set pulldown stiffness
-      pulldown_force_stiffness = 50;
+      pulldown_force_stiffness = 100;
     }
 
     int current_character = morse_sequence[i]; //current dot/dash/space
