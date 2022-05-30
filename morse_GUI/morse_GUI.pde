@@ -180,7 +180,6 @@ void draw() {
     case END: {
       
       if (serialStr.equals("reset")){
-        showActualMorse = true;
         currentState = State.WORD_SELECT;
         drawStaticScreen();
         drawInstructions();
@@ -228,7 +227,7 @@ void drawInstructions() {
   text("Hold handle down to start exercise. After 2 sec, return to the neutral position and relax your finger", 40, 475);
   text("During Training:", 30, 500);
   text("There will be 3 rounds, 2 training rounds and 1 test round", 40, 525);
-  text("During the training rounds, the TAPKIT will provide force feedback. Move along with the feedback", 40, 550);
+  text("During the training rounds, the TAPKIT will provide force feedback. Let the TAPKIT pull your finger", 40, 550);
   text("During the test round, there will be no force or visual feedback. Move based on what you have learned in the previous rounds", 40, 575);
   
   ////redraw();
