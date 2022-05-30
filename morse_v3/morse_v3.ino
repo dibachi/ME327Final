@@ -103,12 +103,12 @@ int dot = unit_time + 1;
 int dash = 3*unit_time + 1;
 int space = unit_time;
 int space_long = 3*unit_time;
-int end_space = 7*unit_time;
+int end_space = 10*unit_time;
 int morse_sequence[100] = {};
 // int morse_sequence;
-int SOS[] = {dot, space, dot, space, dot, space_long, dash, space, dash, space, dash, space_long, dot, space, dot, space, dot, end_space};
-int HAPTICS[] = {dot, space, dot, space, dot, space, dot, space_long, dot, space, dash, space_long, dot, space, dash, space, dash, space, dot, space_long, dash, space_long, dot, space, dot, space_long, dash, space, dot, space, dash, space, dot, space_long, dot, space, dot, space, dot, end_space};
-int STANFORD[] = {dot, space, dot, space, dot, space_long, dash, space_long, dot, space, dash, space_long, dash, space, dot, space_long, dot, space, dot, space, dash, space, dot, space_long, dash, space, dash, space, dash, space_long, dot, space, dash, space, dot, space_long, dot, space, dash, space, dot, space_long, dash, space, dot, space, dot, end_space};
+int SOS[] = {end_space, dot, space, dot, space, dot, space_long, dash, space, dash, space, dash, space_long, dot, space, dot, space, dot, end_space};
+int HAPTICS[] = {end_space, dot, space, dot, space, dot, space, dot, space_long, dot, space, dash, space_long, dot, space, dash, space, dash, space, dot, space_long, dash, space_long, dot, space, dot, space_long, dash, space, dot, space, dash, space, dot, space_long, dot, space, dot, space, dot, end_space};
+int STANFORD[] = {end_space, dot, space, dot, space, dot, space_long, dash, space_long, dot, space, dash, space_long, dash, space, dot, space_long, dot, space, dot, space, dash, space, dot, space_long, dash, space, dash, space, dash, space_long, dot, space, dash, space, dot, space_long, dot, space, dash, space, dot, space_long, dash, space, dot, space, dot, end_space};
 int word_selection = 0;
 int prev_word_selection = 2;
 //int total_seq_time = 0;
@@ -127,13 +127,13 @@ unsigned long intervalContact_l = (unsigned long) 100*intervalContact;
 unsigned long intervalRelease_l = (unsigned long) 100*intervalRelease;
 double pulldown_force = 0;
 double pulldown_force_stiffness = 200;
-double contact_position = 0.0;
-double rest_position = -0.01; //-0.01
+double contact_position = 0.01;
+double rest_position = 0.0; //-0.01
 double contact_force = 0;
 double contact_stiffness = 1000;
 double restoring_force = 0;
 double restoring_stiffness = 100;
-unsigned long timing_tolerance = 100;
+unsigned long timing_tolerance = 149;
 
 boolean already_printed_start = false;
 boolean already_printed_dot = false;
@@ -172,9 +172,9 @@ void setup()
   pinMode(dirPin, OUTPUT);  // dir pin for motor A
 
   //peripherals
-  pinMode(buzzerPin, OUTPUT); 
+//  pinMode(buzzerPin, OUTPUT); 
   pinMode(ledPin, OUTPUT);
-  analogWrite(buzzerPin, 0);
+//  analogWrite(buzzerPin, 0);
   analogWrite(ledPin, 0);
   
   // Initialize motor 
@@ -297,7 +297,8 @@ void loop()
   
   //NEW CODE BEGINS (KEEP IT CLEAN DICKHEAD)
   if (xh > contact_position) {
-    analogWrite(buzzerPin, 50); //buzzer
+//    analogWrite(buzzerPin, 50); //buzzer
+    tone(buzzerPin, 1047);
     analogWrite(ledPin, 255); //led
     contact_force = contact_stiffness*(xh - contact_position);
     restoring_force = 0;
@@ -305,7 +306,8 @@ void loop()
     contact_state = true;
     
   } else {
-    analogWrite(buzzerPin, 0); //buzzer
+//    analogWrite(buzzerPin, 0); //buzzer
+    noTone(buzzerPin);
     analogWrite(ledPin, 0); //led
     contact_force = 0; //virtual wall off
     restoring_force = restoring_stiffness*(xh - rest_position);
@@ -392,20 +394,36 @@ void loop()
 //    } //end brief tap in word selection
     if (intervalContact_l > (unsigned long) 100*500) {
       Serial.println("start");
-      delay(200);
+      previousTimePull = millis();
+//      tone(buzzerPin, 621);
+//      delay(100);
+      
+//      analogWrite(buzzerPin, 0);
+//      noTone(buzzerPin);
+//      delay(2000);
+//      tone(buzzerPin, 262, 1000);
+//      noTone(buzzerPin);
+//      delay(2000);
+//      delay(1000);
+//      analogWrite(buzzerPin, 0);
+//      noTone(buzzerPin);
+//      delay(200);
+//      pulldown_force = pulldown_force_stiffness*(xh - rest_position);
+//      noTone(buzzerPin);
       state = 1; //begin stage 1
+      
     } //end long word selection
   } //end word selection
 
   if (state != 0 && state != 4) { //if state is not word selection nor end
     if (state == 1) { //set pulldown stiffness 
-      pulldown_force_stiffness = 200;
+      pulldown_force_stiffness = 300;
     }
     if (state == 2) { //set pulldown stiffness
-      pulldown_force_stiffness = 150;
+      pulldown_force_stiffness = 300;
     }
     if (state == 3) { //set pulldown stiffness
-      pulldown_force_stiffness = 100;
+      pulldown_force_stiffness = 0;
     }
 
     int current_character = morse_sequence[i]; //current dot/dash/space
@@ -413,11 +431,11 @@ void loop()
     //set interval length and pulldown force given position in morse sequence
     if (current_character == dot){ 
       intervalPull = dot;
-      pulldown_force = pulldown_force_stiffness*(xh - contact_position);
+      pulldown_force = pulldown_force_stiffness*(xh - (contact_position + 0.005));
     }
     else if (current_character == dash){
       intervalPull = dash;
-      pulldown_force = pulldown_force_stiffness*(xh - contact_position);
+      pulldown_force = pulldown_force_stiffness*(xh - (contact_position + 0.005));
     }
     else if (current_character == space){
       intervalPull = space;
@@ -456,6 +474,14 @@ void loop()
 //        already_printed_eoc = true;
 //      }
 //    } //end eoc send
+//    if (current_character == end_space && i == 0){
+//      tone(buzzerPin, 2093);
+//      delay(500);
+//      noTone(buzzerPin);
+////      noTone(buzzerPin);
+//    }
+    
+    
     
 
     //pull timing
@@ -468,7 +494,7 @@ void loop()
       already_printed_dash = false;
 //      already_printed_eoc = false;
       // Serial.println(intervalPull_l);
-      if (current_character == end_space){ //end of morse sequence
+      if (current_character == end_space && i != 0){ //end of morse sequence
         i = 0; //back to beginning of sequence
         prev_state = state; 
         Serial.println("eow");
