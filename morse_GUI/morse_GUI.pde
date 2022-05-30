@@ -60,7 +60,7 @@ void setup() {
   // Check the listed serial ports in your machine
   // and use the correct index number in Serial.list()[].
   //note you may need to change port number
-  myPort = new Serial(this, Serial.list()[0], 115200);  //port 0 (COM 3) on jack's computer // also make sure baud rate matches Arduino
+  myPort = new Serial(this, Serial.list()[1], 115200);  //port 0 (COM 3) on jack's computer // also make sure baud rate matches Arduino
   
   // A serialEvent() is generated when a newline character is received :
   myPort.bufferUntil('\n');
@@ -99,6 +99,7 @@ void draw() {
     } break;
     
     case WORD_SELECT: {
+      showActualMorse = true;
       // ignore reset in this state
       if (serialStr.equals("reset")){
         // do nothing
@@ -179,6 +180,7 @@ void draw() {
     case END: {
       
       if (serialStr.equals("reset")){
+        showActualMorse = true;
         currentState = State.WORD_SELECT;
         drawStaticScreen();
         drawInstructions();
@@ -223,11 +225,11 @@ void drawInstructions() {
   text("Instructions:", 20, 400);
   text("Word Select:", 30, 425);
   text("Quick-press handle to change selected word", 40, 450);
-  text("Hold handle down to start exercise", 40, 475);
+  text("Hold handle down to start exercise. After 2 sec, return to the neutral position and relax your finger", 40, 475);
   text("During Training:", 30, 500);
-  text("There will be 3 rounds, blah blah blah", 40, 525);
-  text("etc etc etc", 40, 550);
-  text("Insert More Instructions Here", 40, 575);
+  text("There will be 3 rounds, 2 training rounds and 1 test round", 40, 525);
+  text("During the training rounds, the TAPKIT will provide force feedback. Move along with the feedback", 40, 550);
+  text("During the test round, there will be no force or visual feedback. Move based on what you have learned in the previous rounds", 40, 575);
   
   ////redraw();
 }
@@ -288,6 +290,15 @@ void drawWord(String word, int highlightedChar){
 void beginUserMorse(String word, int round)
 {
   drawStaticScreen();
+  drawInstructions();
+  
+  // Hide morse truth during last round
+  if (round == 3)
+  {
+    showActualMorse = false;
+  } else {
+   showActualMorse = true; 
+  }
   
   currentWord = word;
   currentElemIdx = 0; // start at 1st morse elem
