@@ -68,8 +68,8 @@ void setup() {
   // Morse Dictionary setup
   initMorseDict();
   
-  currentState  = State.IDLE; //change to word select?
-  
+  //currentState  = State.IDLE; //change to word select?
+  currentState  = State.WORD_SELECT; //change to word select?
   
   // Slow down draw
   //frameRate(0.5); 
